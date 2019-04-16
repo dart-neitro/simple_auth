@@ -61,7 +61,7 @@ class EncryptionMixin:
         :return: result (bool)
         """
 
-    @error_to_response
+    #@error_to_response
     def encode_token(self, data: dict) -> str:
         key = {
             "user_id": str,
@@ -71,19 +71,23 @@ class EncryptionMixin:
                     x, self.datetime_format))}
 
         return self.__encode(
-            key=key, data=data, algorithm=self.service_algorithm)
+            key=key, data=data, secret_key=self.service_key,
+            algorithm=self.service_algorithm)
 
-    @error_to_response
-    def __encode(self, key: dict, data: dict, algorithm: str) -> str:
+    #@error_to_response
+    def __encode(self, key: dict, data: dict,
+                 secret_key: str, algorithm: str) -> str:
         """
         Encode data to sting format
 
         :param key: data for encoding
         :param data: data for encoding
+        :param secret_key: secret_key for encoding
         :param algorithm: algorithm for encoding
 
         :return: encoded string
         """
+
         # check format data
         if not isinstance(data, dict):
             return self.format(error=True, msg="data must be a dictionary")
@@ -92,7 +96,7 @@ class EncryptionMixin:
             return self.format(error=True, msg="Wrong format")
 
         encoded_string = jwt.encode(
-            data, self.secret_key, algorithm=algorithm)
+            data, secret_key, algorithm=algorithm)
 
         return self.format(result=dict(encoded_string=encoded_string))
 
