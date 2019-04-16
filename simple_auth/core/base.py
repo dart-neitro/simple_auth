@@ -5,6 +5,7 @@ class BaseMixin:
     """
     Base mixin
     """
+    datetime_format = "%Y%m%d_%H%M%S"
 
     @staticmethod
     def format(error: bool=0, msg: str='',

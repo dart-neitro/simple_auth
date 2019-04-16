@@ -1,14 +1,15 @@
 import datetime
 
 import unittest
+from unittest import mock
 
-from core.auth import RemoteUserCheck
+from simple_auth.core.auth import RemoteUserCheck
 
 
 class MyTest(unittest.TestCase):
 
-    def test_1(self):
-        ruc = RemoteUserCheck(secret_key='secret_key', server_auth=None)
+    def test_expiration_time(self):
+        ruc = RemoteUserCheck(server_auth=None)
         user_cookies = {
             "user_id": "1",
             "cookies": "123",
@@ -41,6 +42,61 @@ class MyTest(unittest.TestCase):
             True
         )
 
+    @mock.patch('simple_auth.core.auth.datetime')
+    def test_user_id(self, fake_datetime):
+        ruc = RemoteUserCheck(server_auth=None)
+        now = datetime.datetime(2019, 4, 14, 22, 0, 0)
+        expiration_time = datetime.datetime(2019, 4, 14, 22, 5, 0)
+        fake_datetime.datetime = mock.MagicMock()
+
+        fake_datetime.datetime.now = mock.MagicMock(return_value=now)
+        fake_datetime.datetime.strptime = datetime.datetime.strptime
+
+        user_cookies = {
+            "user_id": "",
+            "cookies": "cookies",
+            "expiration_time": expiration_time.strftime(ruc.datetime_format)
+        }
+
+        self.assertEqual(
+            ruc.check(**user_cookies).get("error"),
+            True
+        )
+
+        user_cookies["user_id"] = "user_id"
+
+        self.assertEqual(
+            ruc.check(**user_cookies).get("error"),
+            False
+        )
+
+    @mock.patch('simple_auth.core.auth.datetime')
+    def test_cookies(self, fake_datetime):
+        ruc = RemoteUserCheck(server_auth=None)
+        now = datetime.datetime(2019, 4, 14, 22, 0, 0)
+        expiration_time = datetime.datetime(2019, 4, 14, 22, 5, 0)
+        fake_datetime.datetime = mock.MagicMock()
+
+        fake_datetime.datetime.now = mock.MagicMock(return_value=now)
+        fake_datetime.datetime.strptime = datetime.datetime.strptime
+
+        user_cookies = {
+            "user_id": "user_id",
+            "cookies": "",
+            "expiration_time": expiration_time.strftime(ruc.datetime_format)
+        }
+
+        self.assertEqual(
+            ruc.check(**user_cookies).get("error"),
+            True
+        )
+
+        user_cookies["cookies"] = "cookies"
+
+        self.assertEqual(
+            ruc.check(**user_cookies).get("error"),
+            False
+        )
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(MyTest)

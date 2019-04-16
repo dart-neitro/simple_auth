@@ -1,18 +1,15 @@
 import datetime
 
-
 from .base import BaseMixin
 from .utilities import check_datetime_format
 
 
 class RemoteUserCheck(BaseMixin):
-    secret_key = None
     server_auth = None
     datetime_format = "%Y%m%d_%H%M%S"
     timestamp_delta = datetime.timedelta(seconds=5)
 
-    def __init__(self, secret_key, server_auth):
-        self.secret_key = secret_key
+    def __init__(self, server_auth):
         self.server_auth = server_auth
 
     def check_expiration_time(self, expiration_time: str) -> bool:
@@ -55,5 +52,11 @@ class RemoteUserCheck(BaseMixin):
         """
         if not self.check_expiration_time(expiration_time):
             return self.format(error=True, msg="Time is out for cookies")
+
+        if not user_id:
+            return self.format(error=True, msg="User id not sent")
+
+        if not cookies:
+            return self.format(error=True, msg="Cookies not sent")
 
         return self.format()
