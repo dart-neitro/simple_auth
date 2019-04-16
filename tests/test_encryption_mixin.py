@@ -8,6 +8,7 @@ from simple_auth.core.base import BaseMixin
 class Encrypt(BaseMixin, EncryptionMixin):
 
     def __init__(self, *args, **kwargs):
+
         EncryptionMixin.__init__(self, *args, **kwargs)
 
 
@@ -18,14 +19,25 @@ class MyTest(unittest.TestCase):
             Encrypt()
 
         with self.assertRaises(AttributeError):
-            Encrypt(secret_key='')
+            Encrypt(service_key='',
+                    service_auth_key='service_auth_key')
 
         with self.assertRaises(AttributeError):
-            Encrypt(secret_key=123)
+            Encrypt(service_key=123,
+                    service_auth_key='service_auth_key')
 
-    @mock.patch('core.encryption.jwt')
+        with self.assertRaises(AttributeError):
+            Encrypt(service_key='service_key',
+                    service_auth_key='')
+
+        with self.assertRaises(AttributeError):
+            Encrypt(service_key='service_key',
+                    service_auth_key=111)
+
+    @mock.patch('simple_auth.core.encryption.jwt')
     def test_encode(self, fake_jwt):
-        encrypt_mixin = Encrypt(secret_key='secret_key')
+        encrypt_mixin = Encrypt(
+            service_key='service_key', service_auth_key='service_auth_key')
 
         # wrong format data
         fake_jwt.encode_token = mock.MagicMock(return_value='fake_string')
@@ -33,8 +45,7 @@ class MyTest(unittest.TestCase):
 
         self.assertEqual(
             encrypt_mixin.encode_token(data),
-            {'result': {'encoded_string': 'fake_string'}, 'error': 0,
-             'msg': ''}
+            {'error': True, 'msg': 'Wrong format', 'result': None}
         )
 
 

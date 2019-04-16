@@ -22,17 +22,34 @@ class EncryptionMixin:
     Mixin for work with encrypt and decrypt
     """
     # datetime_format = "%Y%m%d_%H%M%S"
-    secret_key = None
-    algorithm = None
+    # for work with end user
+    service_key = None
+    service_algorithm = None
 
-    def __init__(self, secret_key: str, algorithm: str='HS256'):
-        self.secret_key = secret_key
-        self.algorithm = algorithm
+    # for work with auth service
+    service_auth_key = None
+    service_auth_algorithm = None
 
-        if not secret_key or not isinstance(secret_key, str):
+    def __init__(self, service_key: str, service_auth_key: str,
+                 service_algorithm: str='HS256',
+                 service_auth_algorithm: str= 'HS256',
+                 ):
+
+        self.service_key = service_key
+        self.service_algorithm = service_algorithm
+        self.service_auth_key = service_auth_key
+        self.service_auth_algorithm = service_auth_algorithm
+
+        if not service_key or not isinstance(service_key, str):
             raise AttributeError('secret_key must be a non-empty string')
 
-        if not algorithm or not isinstance(algorithm, str):
+        if not service_algorithm or not isinstance(service_algorithm, str):
+            raise AttributeError('algorithm must be a non-empty string')
+
+        if not service_auth_key or not isinstance(service_auth_key, str):
+            raise AttributeError('secret_key must be a non-empty string')
+
+        if not service_auth_algorithm or not isinstance(service_auth_algorithm, str):
             raise AttributeError('algorithm must be a non-empty string')
 
     def __check_encrypt_format(self, data: dict):
@@ -44,23 +61,26 @@ class EncryptionMixin:
         :return: result (bool)
         """
 
-        if not isinstance(data, dict):
-            return False
-
+    @error_to_response
+    def encode_token(self, data: dict) -> str:
         key = {
             "user_id": str,
             "token": str,
             "expiration_time": schema.And(
                 str, lambda x: datetime.datetime.strptime(
                     x, self.datetime_format))}
-        return schema_wrapper(key=key, value=data)
+
+        return self.__encode(
+            key=key, data=data, algorithm=self.service_algorithm)
 
     @error_to_response
-    def encode_token(self, data: dict) -> str:
+    def __encode(self, key: dict, data: dict, algorithm: str) -> str:
         """
         Encode data to sting format
 
+        :param key: data for encoding
         :param data: data for encoding
+        :param algorithm: algorithm for encoding
 
         :return: encoded string
         """
@@ -68,11 +88,12 @@ class EncryptionMixin:
         if not isinstance(data, dict):
             return self.format(error=True, msg="data must be a dictionary")
 
-        if not self.__check_encrypt_format(data):
+        if not schema_wrapper(key=key, value=data):
             return self.format(error=True, msg="Wrong format")
 
         encoded_string = jwt.encode(
-            data, self.secret_key, algorithm=self.algorithm)
+            data, self.secret_key, algorithm=algorithm)
+
         return self.format(result=dict(encoded_string=encoded_string))
 
     def decode(self, encoded_string: str) -> dict:
