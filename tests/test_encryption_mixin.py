@@ -35,8 +35,7 @@ class MyTest(unittest.TestCase):
             Encrypt(service_key='service_key',
                     service_auth_key=111)
 
-    @mock.patch('simple_auth.core.encryption.jwt')
-    def test_encode(self, fake_jwt):
+    def test_encode(self):
         encrypt_mixin = Encrypt(
             service_key='service_key', service_auth_key='service_auth_key')
 
@@ -79,6 +78,50 @@ class MyTest(unittest.TestCase):
             {'user_id': 'user_id', 'token': 'token',
              'expiration_time': '20190414_220500'},
             'service_key', algorithm='HS256')
+
+    def test_decode_1(self):
+        encrypt_mixin = Encrypt(
+            service_key='service_key', service_auth_key='service_auth_key')
+
+        encoded_string = 'encoded_string'
+
+        self.assertEqual(
+            encrypt_mixin.decode_token(encoded_string),
+            {'error': True, 'msg': "Wrong string for decoding", 'result': None}
+            )
+
+    @mock.patch('simple_auth.core.encryption.jwt')
+    def test_decode_2(self, fake_jwt):
+
+        encrypt_mixin = Encrypt(
+            service_key='service_key', service_auth_key='service_auth_key')
+
+        # fake_data
+        expiration_time = datetime.datetime(2019, 4, 14, 22, 5, 0)
+        fake_data = {
+            "user_id": "user_id",
+            "token": "token",
+            "expiration_time": expiration_time.strftime(
+                encrypt_mixin.datetime_format)
+        }
+        fake_jwt.decode = mock.MagicMock(
+            return_value=fake_data)
+
+        # test data
+        encoded_string = 'encoded_string'
+
+        self.assertEqual(
+            encrypt_mixin.decode_token(encoded_string),
+            {
+                'result': fake_data,
+                'error': 0,
+                'msg': ''
+            }
+        )
+
+        fake_jwt.decode.assert_called_once()
+        fake_jwt.decode.assert_called_with(
+            'encoded_string', 'service_key', algorithms=['HS256'])
 
 
 

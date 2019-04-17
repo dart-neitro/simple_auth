@@ -4,6 +4,7 @@ Mixin, classes and function for work with encrypt and decrypt
 
 import datetime
 import jwt
+from jwt.exceptions import DecodeError
 import schema
 
 from .utilities import error_to_response, schema_wrapper
@@ -21,7 +22,7 @@ class EncryptionMixin:
     """
     Mixin for work with encrypt and decrypt
     """
-    # datetime_format = "%Y%m%d_%H%M%S"
+
     # for work with end user
     service_key = None
     service_algorithm = None
@@ -52,30 +53,31 @@ class EncryptionMixin:
         if not service_auth_algorithm or not isinstance(service_auth_algorithm, str):
             raise AttributeError('algorithm must be a non-empty string')
 
-    def __check_encrypt_format(self, data: dict):
+    @property
+    def __format_service_data(self):
         """
-        Method for check data format
+        Get format data for service part
 
-        :param data:
-
-        :return: result (bool)
+        :return:
         """
 
-    #@error_to_response
-    def encode_token(self, data: dict) -> str:
         key = {
             "user_id": str,
             "token": str,
             "expiration_time": schema.And(
                 str, lambda x: datetime.datetime.strptime(
                     x, self.datetime_format))}
+        return key
 
+    #@error_to_response
+    def encode_token(self, data: dict) -> str:
         return self.__encode(
-            key=key, data=data, secret_key=self.service_key,
+            key=self.__format_service_data,
+            data=data, secret_key=self.service_key,
             algorithm=self.service_algorithm)
 
     #@error_to_response
-    def __encode(self, key: dict, data: dict,
+    def __encode(self, data: dict, key: dict,
                  secret_key: str, algorithm: str) -> str:
         """
         Encode data to sting format
@@ -100,15 +102,29 @@ class EncryptionMixin:
 
         return self.format(result=dict(encoded_string=encoded_string))
 
-    def decode(self, encoded_string: str) -> dict:
+    def decode_token(self, encoded_string: str) -> dict:
+        return self.__decode(encoded_string,
+                             key=self.__format_service_data,
+                             secret_key=self.service_key,
+                             algorithm=self.service_algorithm)
+
+    def __decode(self, encoded_string: str, key: dict,
+                 secret_key: str, algorithm: str) -> str:
         """
 
         :param encoded_string:
         :return:
         """
-        data = jwt.decode(
-            encoded_string, self.secret_key, algorithms=[self.algorithm])
-        return data
+        try:
+            data = jwt.decode(
+                encoded_string, secret_key, algorithms=[algorithm])
+        except DecodeError:
+            return self.format(error=True, msg="Wrong string for decoding")
+
+        if not schema_wrapper(key=key, value=data):
+            return self.format(error=True, msg="Wrong format")
+
+        return self.format(result=data)
 
     def check_key(self) -> bool:
         """
