@@ -18,6 +18,87 @@ class EncryptionException(Exception):
     pass
 
 
+class WrongFormatDataError(Exception):
+    """
+    Custom Class for Encryption Exception
+    """
+
+    pass
+
+
+# class DecodeError(Exception):
+
+
+class EncryptData:
+    """
+    Class provide methods for work with encrypt and decrypt data
+    """
+
+    # for work with end user
+    secret_key = None
+    algorithm = None
+    format_data = None
+
+    def __init__(self, secret_key: str,
+                 format_data: dict, algorithm: str = 'HS256'):
+        """
+        :param secret_key: key for encrypting and decrypting
+        :param format_data: format data for checking
+        :param algorithm: encrypting algorithm
+        """
+
+        self.secret_key = secret_key
+        self.algorithm = algorithm
+        self.format_data = format_data
+
+        if not secret_key or not isinstance(secret_key, str):
+            raise AttributeError('secret_key must be a non-empty string')
+
+        if not algorithm or not isinstance(algorithm, str):
+            raise AttributeError('algorithm must be a non-empty string')
+
+    def encode(self, data: dict) -> str:
+        """
+        Encode data to sting format
+
+        :param data: data for encoding
+
+        :return: encoded string
+        """
+
+        # check format data
+        if not isinstance(data, dict):
+            raise WrongFormatDataError("The data must be a dictionary")
+
+        if not schema_wrapper(key=self.key, value=data):
+            raise WrongFormatDataError("Wrong data format")
+
+        encoded_string = jwt.encode(
+            data, self.secret_key, algorithm=self.algorithm)
+
+        return encoded_string
+
+    def decode(self, encoded_string: str) -> str:
+        """
+        String to data
+
+        :param encoded_string:
+
+        :return:
+        """
+        try:
+            data = jwt.decode(
+                encoded_string, self.secret_key, algorithms=[self.algorithm])
+        except DecodeError:
+            raise DecodeError("Wrong string for decoding")
+
+        if not schema_wrapper(key=self.key, value=data):
+            raise WrongFormatDataError("Wrong data format")
+
+        return data
+
+
+
 class EncryptionMixin:
     """
     Mixin for work with encrypt and decrypt
