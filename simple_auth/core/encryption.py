@@ -4,29 +4,13 @@ Mixin, classes and function for work with encrypt and decrypt
 
 import datetime
 import jwt
-from jwt.exceptions import DecodeError
+from jwt.exceptions import DecodeError as JWTDecodeError
 import schema
 
 from .utilities import error_to_response, schema_wrapper
+from .exceptions import (
+    EncryptionException, WrongFormatDataError, DecodeError)
 
-
-class EncryptionException(Exception):
-    """
-    Custom Class for Encryption Exception
-    """
-
-    pass
-
-
-class WrongFormatDataError(Exception):
-    """
-    Custom Class for Encryption Exception
-    """
-
-    pass
-
-
-# class DecodeError(Exception):
 
 
 class EncryptData:
@@ -34,22 +18,30 @@ class EncryptData:
     Class provide methods for work with encrypt and decrypt data
     """
 
-    # for work with end user
+    datetime_format = "%Y%m%d_%H%M%S"
     secret_key = None
     algorithm = None
     format_data = None
 
     def __init__(self, secret_key: str,
-                 format_data: dict, algorithm: str = 'HS256'):
+                 format_data: dict=None, algorithm: str = 'HS256',
+                 datetime_format: str=None):
         """
         :param secret_key: key for encrypting and decrypting
         :param format_data: format data for checking
         :param algorithm: encrypting algorithm
+        :param datetime_format: timestamp format
         """
 
         self.secret_key = secret_key
         self.algorithm = algorithm
-        self.format_data = format_data
+        if datetime_format:
+            self.datetime_format = datetime_format
+        # for checking
+        if format_data is not None:
+            self.format_data = format_data
+        else:
+            self.format_data = self.default_format_data
 
         if not secret_key or not isinstance(secret_key, str):
             raise AttributeError('secret_key must be a non-empty string')
@@ -70,7 +62,7 @@ class EncryptData:
         if not isinstance(data, dict):
             raise WrongFormatDataError("The data must be a dictionary")
 
-        if not schema_wrapper(key=self.key, value=data):
+        if not schema_wrapper(key=self.format_data, value=data):
             raise WrongFormatDataError("Wrong data format")
 
         encoded_string = jwt.encode(
@@ -89,14 +81,23 @@ class EncryptData:
         try:
             data = jwt.decode(
                 encoded_string, self.secret_key, algorithms=[self.algorithm])
-        except DecodeError:
+        except JWTDecodeError:
             raise DecodeError("Wrong string for decoding")
 
-        if not schema_wrapper(key=self.key, value=data):
+        if not schema_wrapper(key=self.format_data, value=data):
             raise WrongFormatDataError("Wrong data format")
 
         return data
 
+    @property
+    def default_format_data(self):
+        format_data = {
+            "user_id": str,
+            "token": str,
+            "expiration_time": schema.And(
+                str, lambda x: datetime.datetime.strptime(
+                    x, self.datetime_format))}
+        return format_data
 
 
 class EncryptionMixin:
